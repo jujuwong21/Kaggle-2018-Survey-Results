@@ -1,0 +1,950 @@
+---
+title: "So you want to be a Data Scientist"
+subtitle: "Results from Kaggle 2018 Survey on Data Science"
+author: "Juliette Wong"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document:
+    code_folding: hide
+    toc:  true
+    toc_float:  true
+    theme: cosmo # or flatly/journal?
+---
+
+<style>
+  .col2 {
+    columns: 2 200px;         /* number of columns and width in pixels*/
+    -webkit-columns: 2 200px; /* chrome, safari */
+    -moz-columns: 2 200px;    /* firefox */
+  }
+</style> 
+
+# Summary
+
+The data is based on 2018 survey responses about data science behaviors and experiences, hosted by Kaggle.
+
+Programming Languages
+
++ The most common programming language that data scientists use is Python. 
++ The three most common programming languages used by data scientists most often are Python, R, and SQL. These are also the top three recommended programming languages for aspiring data scientists.
++ There are differences in ratings of programming languages by individuals in different industries and job positions; however, Python, SQL, and R are all still extremely common. The biggest difference is that people in academia might use languages not commonly used in industry.
+
+Tools and Libraries
+
++ The two most common data analysis tool types are local/hosted development environments, such as RStudio and JupyterLab, followed by basic statistical software such as Microsoft Excel and Google Sheets
++ The top 3 ML libraries are Scikit-learn (Python), Tensorflow (multiple languages), and Keras (multiple languages).
++ The top 3 data visualization libraries are Matplotlib (Python), Seaborn (Python), and ggplot2 (R)
+
+Learning About Data Science
+
++ The most common activity that is important to one's role at work is the ability to analyze and understand the data to influence product or business decisions. 
++ There are multiple tasks when completing a data science project. These include gathering the data, cleaning the data, performing exploratory data analysis, building and selecting the model, finding and communicating insights, and putting the model into production. While most of the hype for data science is on model building, cleaning and gathering data is equally as important and time-consuming.
++ Over half of what a data scientist counts as training is self-taught or taught through online courses. Only 18.07% of one's training, on average, consists of university coursework.
++ The top 3 online course platforms are Coursera, Udemy, and DataCamp.
++ Most data professionals think that independent projects are just as important, if not more important, than academic achievements.
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(fig.align = "center")
+
+library(knitr)
+library(tidyverse)
+library(readr)
+library(colorspace)
+library(pander)
+library(reshape2)
+library(gridExtra)
+library(scales)
+
+my_theme <- theme_light() + 
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+        legend.position = "none", 
+        plot.background = element_rect(fill = "gray95"),
+        panel.background = element_rect(fill = "gray98"),
+        text = element_text(family = "HersheySans"))
+```
+
+# Introduction
+
+The report aims to answer the following questions: 
+
++ What specific programming languages are used the most often? Are they dependent on job title and/or industry?
++ What are the most common tools used for data analysis? 
++ What are the most common machine learning and data visualization libraries?
++ What are common activities and responsibilities for those in a data-related role or working on a data science project?
++ How do people train to become data scientists? What are popular media sources and online course platforms to learn data science?
+
+# Data and Demographics
+
+Our data comes from a survey hosted Kaggle, an online community of data scientists and machine learning practitioners that has data-related competitions, datasets, and different notebooks, where individuals can share their code and run other people's code. The survey, conducted in 2018, was live from October 22nd to October 29th, and in total there were 23,859 useable respondents from 147 countries.
+
+In this survey, not every respondent answered every question, as they were only asked questions that were applicable to them. For many of the questions, the survey was given in multiple choice form. Choices were shown in a random order, and individuals had the option to write-in text. For the purposes of this report, and because there is no key to match between an individual's multiple choice responses and write-in responses, we will focus on the multiple choice responses.
+
+The survey data can be found [here](https://www.kaggle.com/kaggle/kaggle-survey-2018).
+
+Below, we provide marginal distributions to provide some information about the demographics of our survey respondents. 
+
+```{r multiple-choice}
+multiple_choice_data <- read_csv("multipleChoiceResponses.csv", skip = 1)
+demographics <- multiple_choice_data %>%
+  select("age" = "What is your age (# years)?", 
+         "country" = "In which country do you currently reside?", 
+         "highest_ed" = "What is the highest level of formal education that you have attained or plan to attain within the next 2 years?", 
+         "major" = "Which best describes your undergraduate major? - Selected Choice", 
+         "job_title" = "Select the title most similar to your current role (or most recent title if retired): - Selected Choice", 
+         "industry" = "In what industry is your current employer/contract (or your most recent employer if retired)? - Selected Choice")
+```
+
+### Age
+```{r fig.align= "center", fig.height= 3.5}
+demographics %>%
+  group_by(age) %>%
+  summarize(count = n()) %>%
+  ggplot(aes(x = age, y = count, fill = age)) + 
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label=count), family = "HersheySans", vjust=-0.3, size=3.5) +
+  ylim(c(0, 6250)) +
+  scale_fill_discrete_sequential(palette = "ag_Sunset") + 
+  labs(title = "Distribution of Survey Results by Age", 
+       x = "Age Group", y = "Number of Surveys") + 
+  my_theme
+```
+
+
+
+### Education Levels
+```{r fig.align= "center", fig.height = 3.5}
+education_levels <- c("High School", "Some College", "Bachelor's", 
+                     "Master's", "Doctoral", "Professional")
+
+highest_ed_data <- demographics %>%
+  group_by(highest_ed) %>%
+  summarize(count = n()) %>%
+  filter(highest_ed != "NA" & highest_ed != "I prefer not to answer") %>%
+  mutate(highest_ed = fct_recode(highest_ed, 
+                      "High School" = "No formal education past high school", 
+                      "Some College" = "Some college/university study without earning a bachelor’s degree", 
+                      "Bachelor's" = "Bachelor’s degree", 
+                      "Master's" = "Master’s degree",
+                      "Doctoral" = "Doctoral degree",
+                      "Professional" = "Professional degree")) 
+
+highest_ed_data$highest_ed <- factor(highest_ed_data$highest_ed, levels = education_levels)
+
+highest_ed_data %>% 
+  ggplot(aes(x = highest_ed, y = count, fill = highest_ed))  +
+  geom_bar(stat="identity") + 
+  geom_text(aes(label=count), family = "HersheySans", vjust=-0.3, size=3.5) +
+  ylim(c(0, 10950)) +
+  scale_fill_discrete_sequential(palette = "ag_Sunset") + 
+  labs(title = "Distribution of Survey Results by Highest Level of Education", 
+       x = "Education Level", y = "Number of Surveys") + 
+  my_theme
+```
+
+### Majors
+```{r fig.align= "center", fig.height=3.5}
+major_data <- demographics %>%
+  filter(!is.na(major) & major != "I never declared a major") %>%
+  mutate(major = fct_rev(fct_infreq(major))) %>%
+  group_by(major) %>%
+  summarize(count = n())
+
+
+levels(major_data$major) <- c("Computer Science", "Math/Stats", "Engineering", 
+                             "Business", "Life Sciences", "Other", "Social Sciences",
+                             "Physical Sciences", "IT/Systems", "Humanities", 
+                             "Environmental Science", "Arts")
+
+ggplot(major_data, aes(x = major, y = count)) + 
+  geom_bar(stat="identity") + 
+  geom_text(aes(label = count), family = "HersheySans", hjust= -0.15, size=3) +
+  coord_flip(ylim = c(0, 10000)) + 
+  labs(title = "Distribution of Survey Results by Student Major", 
+       x = "Major", y = "Number of Surveys") + 
+  my_theme
+```
+
+### Industry
+```{r fig.align= "center", fig.height = 3.5}
+industry_data <- demographics %>%
+  filter(!is.na(industry) & industry != "I am a student") %>%
+  mutate(industry = fct_rev(fct_infreq(industry))) %>%
+  group_by(industry) %>%
+  summarize(count = n()) 
+
+levels(industry_data$industry)[levels(industry_data$industry)=="Online Business/Internet-based Sales"] <- "Online Sales"
+levels(industry_data$industry)[levels(industry_data$industry)=="Broadcasting/Communications"] <- "Communications"
+levels(industry_data$industry)[levels(industry_data$industry)=="Hospitality/Entertainment/Sports"] <- "Hospitality/Entertainment"
+levels(industry_data$industry)[levels(industry_data$industry)=="Online Service/Internet-based Services"] <- "Online Services"
+
+ggplot(industry_data, aes(x = industry, y = count)) + 
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = count), family = "HersheySans", hjust= -0.15, size=3) +
+  coord_flip(ylim = c(0, 6000)) +
+  labs(title = "Distribution of Survey Results by Industry", 
+       subtitle = "Does not include response 'I am a student'",
+       x = "Industry", y = "Number of Surveys") + 
+  my_theme
+```
+
+### Job Titles
+```{r fig.align = "center", fig.height = 3.5}
+demographics %>%
+  filter(job_title != "Not employed") %>%
+  mutate(job_title = fct_rev(fct_infreq(job_title))) %>%
+  group_by(job_title) %>%
+  summarize(count = n()) %>%
+  ggplot(aes(x = job_title, y = count)) + 
+    geom_bar(stat = "identity") + 
+    coord_flip(ylim = c(0, 5500)) +
+    geom_text(aes(label = count), family = "HersheySans", hjust= -0.15, size=3) + 
+    labs(title = "Distribution of Survey Results by Job Title", 
+        subtitle = "Does not Include Unemployed Individiuals",
+        x = "Job Title", y = "Number of Surveys") + 
+    my_theme
+```
+
+
+# Programming Languages
+
+### Most Popular
+
+For one of the questions, survey respondents were asked "What programming languages do you use on a regular basis?." They were allowed to select as many programming languages as they wanted to. The bar chart shown below (left) shows the top 7 programming languages selected by these individuals. The results above show that by far, Python is the most common programming language, and is commonly used by 83.4% of respondents. Other languages that one might want to learn are SQL and R, which were checked off by 43.9% and 35.5% of respondents, respectivley. 
+
+Survey respondents were also asked what specific programming language they use the most often. For this one, they could only choose 1 answer. As with the previous question, Python was by far the most common answer, with 53.1% of the votes. The next two languages are R and SQL, with 13.4% and 8% of the votes respectively. 
+
+```{r, fig.width = 8}
+programming_regular <- multiple_choice_data %>%
+  select(contains("What programming languages do you use on a regular basis? (Select all that apply")) %>%
+  gather(programming_lang, language) %>%
+  filter(!is.na(language)) %>%
+  filter(language != "Other" & language != "None") %>%
+  mutate(programming_lang = strsplit(programming_lang, "- ") %>% 
+           vapply("[", "", 3)) %>% 
+  group_by(programming_lang) %>%
+  filter(programming_lang != "Text") %>%
+  summarize(regular_prop = n() / 18828) %>%
+  top_n(7, w = regular_prop) %>%
+  mutate(programming_lang = fct_recode(programming_lang, 
+                                       "Javascript" = "Javascript/Typescript")) %>%
+  mutate(programming_lang = fct_rev(fct_reorder(programming_lang, regular_prop)))
+  
+
+programming_most <- multiple_choice_data %>%
+  select("programming_lang" = 
+           "What specific programming language do you use most often? - Selected Choice") %>%
+  group_by(programming_lang) %>%
+  filter(!is.na(programming_lang)) %>%
+  summarize(most_often_prop = n() / 15223) %>%
+  mutate(programming_lang = fct_recode(programming_lang, 
+                                       "Javascript" = "Javascript/Typescript"))
+
+programming <- programming_regular %>% left_join(programming_most, by = "programming_lang")
+programming <- gather(programming, type, proportion, regular_prop:most_often_prop)
+
+programming <- programming %>% mutate(type = factor(type, 
+                              levels = c("regular_prop", "most_often_prop"), 
+                              labels = c("Use Regularly", 
+                                         "Use the Most Often")), 
+                              programming_lang = fct_relevel(programming_lang, 
+                              "Python", "SQL", "R", "C/C++", "Java", "Javascript", "Bash"))
+
+ggplot(programming, aes(x = programming_lang, y = proportion, fill = programming_lang)) + 
+  geom_bar(stat='identity', position = "dodge") + 
+  scale_fill_discrete_qualitative(palette = "Set2") + 
+  scale_y_continuous(labels=scales::percent) +
+  geom_text(aes(label = round(100*proportion, 1)),
+            family = "HersheySans", vjust = -0.5) +
+  facet_wrap(type~., scales = "free") +
+  labs(title = "Top 7 Most Popular Programming Languages", x = "Programming Language", 
+       y = "% of Respondents") + 
+  my_theme
+```
+
+
+
+
+### Language Recommendations for DS
+
+Similar to the results in the previous two graphs, the top three languages that one recommends an aspiring data scientist to learn first are Python, R, and SQL.
+
+```{r}
+multiple_choice_data %>%
+  select("first_lang" = "What programming language would you recommend an aspiring data scientist to learn first? - Selected Choice") %>%
+  group_by(first_lang) %>%
+  filter(!is.na(first_lang)) %>%
+  summarize(prop = n() / 18789) %>%
+  mutate(first_lang = fct_rev(fct_reorder(first_lang, prop))) %>%
+  top_n(7, w = prop) %>%
+  ggplot(aes(x = first_lang, y = prop, fill = first_lang)) + 
+  geom_bar(stat = "identity") + 
+  scale_fill_discrete_qualitative(palette = "Set2") + 
+  geom_text(aes(label = round(prop, 2)), family = "HersheySans", vjust = -0.5, size=3) +
+  labs(title = "Top 7 Recommended Languages for Aspiring Data Scientists", 
+       x = "Programming Language", y = "Proportion of Recommendations") + 
+  my_theme
+```
+
+Personally, I wanted to see if there was any relationship between what survey respondents put down as programming languages that they use the most often and that they recommend to other data scientists. I found that while many people recommended the language that they use the most often, many people that do not use Python the most often recommended Python as the first language for aspiring data scientists to learn.
+
+```{r, fig.width=4.5, fig.height=4.5}
+corr_lang <- multiple_choice_data %>%
+  select("first_lang" = "What programming language would you recommend an aspiring data scientist to learn first? - Selected Choice", 
+         "most_often" = "What specific programming language do you use most often? - Selected Choice") %>%
+  drop_na() %>%
+  filter(first_lang %in% c("Python", "R", "SQL", "C++", "MATLAB", "Java", "C/C++"), 
+         most_often %in% c("Python", "R", "SQL", "C++", "MATLAB", "Java", "C/C++")) %>%
+  mutate(first_lang = fct_infreq(first_lang), 
+         most_often = fct_relevel(most_often, "Java", "MATLAB", "C/C++", "SQL", 
+                                 "R", "Python"))
+
+corr_table <- table(corr_lang$first_lang, corr_lang$most_often) %>% melt()
+
+ggplot(corr_table, aes(x = Var1, y = Var2)) + 
+  geom_tile(aes(fill = log(value))) + 
+  geom_text(aes(label = value), family = "HersheySans") +
+  scale_fill_gradient2(low = "palegreen", mid = "turquoise", high = "mediumorchid", 
+                       midpoint = 5, na.value = "white") +
+  labs(x = "Recommended First Language", y = "Language Used Most Often",
+       title = "Relationship between Survey Responses", 
+       subtitle = "Most Often vs. Recommended First Language") + 
+  my_theme
+```
+
+### Languages by Job/Industry
+
+I wanted to see whether programming languages were dependent on job title. To do so, I found the top 5 programming languages for the four most common jobs: student, data scientist, software engineer, and data analyst. We see that for all four job positions, Python was ranked as the most commonly used programming language. SQL was ranked in all of the job positions, and R was ranked in the top 5 by everyone but software engineers. C++ was ranked in the top 5 for all job titles except for data analysts.
+
+From this, I concluded that knowing Python and SQL is extremely important, regardless of the job. Since R is a programming language primarily used for statistical analysis, it makes sense that it is less important for software engineers. C/C++ is a general programming language that is still commonly used in industry, so it makes sense that students are learning to program with these and that programming-heavy roles use the language regularly.
+
+```{r, fig.width = 8}
+# Student
+programming_student <- multiple_choice_data %>%
+  filter(`Select the title most similar to your current role (or most recent title if retired): - Selected Choice` == "Student") %>%
+  select(contains("What programming languages do you use on a regular basis? (Select all that apply")) %>%
+  gather(programming_lang, language) %>%
+  filter(!is.na(language)) %>%
+  filter(language != "Other" & language != "None") %>%
+  mutate(programming_lang = strsplit(programming_lang, "- ") %>% 
+           vapply("[", "", 3)) %>% 
+  group_by(programming_lang) %>%
+  filter(programming_lang != "Text") %>%
+  summarize(prop = n() / 5253) %>%
+  top_n(5, w = prop) %>%
+  mutate(programming_lang = fct_rev(fct_reorder(programming_lang, prop)))
+  
+student_program_plot <- ggplot(programming_student, aes(x = programming_lang, 
+                         y = prop, fill = programming_lang)) + 
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = round(prop, 2), family = "HersheySans", 
+                vjust = -0.5)) +
+  scale_fill_manual(values=c("#f98cad", "#00c58f", "#00c0d1", "#90b844",
+                             "#dba157")) + 
+  ylim(c(0, 0.7)) + 
+  labs(title = "Student", 
+       x = "Programming Language", y = "Prop. of Responses") +
+  my_theme
+
+# Data Scientist
+programming_datascience <- multiple_choice_data %>%
+  filter(`Select the title most similar to your current role (or most recent title if retired): - Selected Choice` == "Data Scientist") %>%
+  select(contains("What programming languages do you use on a regular basis? (Select all that apply")) %>%
+  gather(programming_lang, language) %>%
+  filter(!is.na(language)) %>%
+  filter(language != "Other" & language != "None") %>%
+  mutate(programming_lang = strsplit(programming_lang, "- ") %>% 
+           vapply("[", "", 3)) %>% 
+  group_by(programming_lang) %>%
+  filter(programming_lang != "Text") %>%
+  summarize(prop = n() / 4137) %>%
+  top_n(5, w = prop) %>%
+  mutate(programming_lang = fct_rev(fct_reorder(programming_lang, prop)))
+
+datascientist_program_plot <- ggplot(programming_datascience, aes(x = fct_rev(fct_reorder(programming_lang, prop)), 
+                         y = prop, fill = programming_lang)) + 
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = round(prop, 2)), family = "HersheySans", 
+            vjust = -0.5) +
+  scale_fill_manual(values=c("#f98cad", "#dba157", "#90b844", "#e98be0",
+                             "#00c58f")) + 
+  ylim(c(0, 0.87)) + 
+  labs(title = "Data Scientist", 
+       x = "Programming Language", y = "Prop. of Responses") + 
+  my_theme
+
+# Software Engineer
+programming_software <- multiple_choice_data %>%
+  filter(`Select the title most similar to your current role (or most recent title if retired): - Selected Choice` == "Software Engineer") %>%
+  select(contains("What programming languages do you use on a regular basis? (Select all that apply")) %>%
+  gather(programming_lang, language) %>%
+  filter(!is.na(language)) %>%
+  filter(language != "Other" & language != "None") %>%
+  mutate(programming_lang = strsplit(programming_lang, "- ") %>% 
+           vapply("[", "", 3)) %>% 
+  group_by(programming_lang) %>%
+  filter(programming_lang != "Text") %>%
+  summarize(prop = n() / 3130) %>%
+  top_n(5, w = prop) %>%
+  mutate(programming_lang = fct_rev(fct_reorder(programming_lang, prop))) %>%
+  mutate(programming_lang = fct_recode(programming_lang, 
+                                       "Javascript" = "Javascript/Typescript"))
+  
+software_program_plot <- ggplot(programming_software, aes(x = fct_rev(fct_reorder(programming_lang, prop)), 
+                         y = prop, fill = programming_lang)) + 
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = round(prop, 2)), family = "HersheySans", 
+            vjust = -0.5) +
+  scale_fill_manual(values=c("#f98cad", "#dba157", "#91a8f2", "#00c0d1",
+                             "#00c58f")) + 
+  ylim(c(0, 0.75)) + 
+  labs(title = "Software Engineer", 
+       x = "Programming Language", y = "Prop. of Responses") + 
+  my_theme
+
+# Data Analyst
+programming_analyst <- multiple_choice_data %>%
+  filter(`Select the title most similar to your current role (or most recent title if retired): - Selected Choice` == "Data Analyst") %>%
+  select(contains("What programming languages do you use on a regular basis? (Select all that apply")) %>%
+  gather(programming_lang, language) %>%
+  filter(!is.na(language)) %>%
+  filter(language != "Other" & language != "None") %>%
+  mutate(programming_lang = strsplit(programming_lang, "- ") %>% 
+           vapply("[", "", 3)) %>% 
+  group_by(programming_lang) %>%
+  filter(programming_lang != "Text") %>%
+  summarize(prop = n() / 1922) %>%
+  top_n(5, w = prop) %>%
+  mutate(programming_lang = fct_rev(fct_reorder(programming_lang, prop))) %>%
+  mutate(programming_lang = fct_recode(programming_lang, 
+                                       "VBA" = "Visual Basic/VBA", 
+                                       "SAS" = "SAS/STATA"))
+  
+analyst_program_plot <- ggplot(programming_analyst, aes(x = fct_rev(fct_reorder(programming_lang, prop)), 
+                         y = prop, fill = programming_lang)) + 
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = round(prop, 2)), family = "HersheySans", 
+            vjust = -0.5) +
+  ylim(c(0, 0.7)) + 
+  scale_fill_manual(values=c("#f98cad", "#dba157", "#90b844", "plum2",
+                             "lavenderblush3")) + 
+  labs(title = "Data Analyst", 
+       x = "Programming Language", y = "Prop. of Responses") + 
+  my_theme
+
+grid.arrange(student_program_plot, datascientist_program_plot, 
+             software_program_plot, analyst_program_plot, nrow = 2)
+```
+
+Similarly, I found the top 5 programming languages for the four most common industries: Computers/Technology, Academics, Accounting/Finance, and Online Services. All of the industries ranked Python, SQL, and R in their top 5 most commonly used programming languages. For the remaining two languages for each industry, we see that all but academia ranked a subset of Java, Javascript, or Bash, while academia ranked C/C++ and MATLAB as important. This shows that there could possibly be a disconnect between academia and industry.
+
+```{r, fig.width = 8}
+# Tech
+programming_tech <- multiple_choice_data %>%
+  filter(`In what industry is your current employer/contract (or your most recent employer if retired)? - Selected Choice` == "Computers/Technology") %>%
+  select(contains("What programming languages do you use on a regular basis? (Select all that apply")) %>%
+  gather(programming_lang, language) %>%
+  filter(!is.na(language)) %>%
+  filter(language != "Other" & language != "None") %>%
+  mutate(programming_lang = strsplit(programming_lang, "- ") %>% 
+           vapply("[", "", 3)) %>% 
+  group_by(programming_lang) %>%
+  filter(programming_lang != "Text") %>%
+  summarize(prop = n() / 5584) %>%
+  top_n(5, w = prop) %>%
+  mutate(programming_lang = fct_rev(fct_reorder(programming_lang, prop))) %>%
+  mutate(programming_lang = fct_recode(programming_lang, 
+                                       "Javascript" = "Javascript/Typescript"))
+
+
+tech_program_plot <- ggplot(programming_tech, aes(x = programming_lang, 
+                         y = prop, fill = programming_lang)) + 
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = round(prop, 2), family = "HersheySans", 
+                vjust = -0.5)) +
+  scale_fill_manual(values=c("#f98cad", "#dba157", "#90b844", "#00c0d1",
+                             "#91a8f2")) + 
+  ylim(c(0, 0.82)) + 
+  labs(title = "Computers/Technology", 
+       x = "Programming Language", y = "Prop. of Responses") +
+  my_theme
+
+# Academia
+programming_academia <- multiple_choice_data %>%
+  filter(`In what industry is your current employer/contract (or your most recent employer if retired)? - Selected Choice` == "Academics/Education") %>%
+  select(contains("What programming languages do you use on a regular basis? (Select all that apply")) %>%
+  gather(programming_lang, language) %>%
+  filter(!is.na(language)) %>%
+  filter(language != "Other" & language != "None") %>%
+  mutate(programming_lang = strsplit(programming_lang, "- ") %>% 
+           vapply("[", "", 3)) %>% 
+  group_by(programming_lang) %>%
+  filter(programming_lang != "Text") %>%
+  summarize(prop = n() / 2749) %>%
+  top_n(5, w = prop) %>%
+  mutate(programming_lang = fct_rev(fct_reorder(programming_lang, prop)))
+
+academia_program_plot <- ggplot(programming_academia, aes(x = programming_lang, 
+                         y = prop, fill = programming_lang)) + 
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = round(prop, 2), family = "HersheySans", 
+                vjust = -0.5)) +
+  scale_fill_manual(values=c("#f98cad", "#90b844", "#00c58f", "#dba157", 
+                             "snow3")) + 
+  ylim(c(0, 0.75)) + 
+  labs(title = "Academia", 
+       x = "Programming Language", y = "Prop. of Responses") +
+  my_theme
+
+# Finance
+programming_finance <- multiple_choice_data %>%
+  filter(`In what industry is your current employer/contract (or your most recent employer if retired)? - Selected Choice` == "Accounting/Finance") %>%
+  select(contains("What programming languages do you use on a regular basis? (Select all that apply")) %>%
+  gather(programming_lang, language) %>%
+  filter(!is.na(language)) %>%
+  filter(language != "Other" & language != "None") %>%
+  mutate(programming_lang = strsplit(programming_lang, "- ") %>% 
+           vapply("[", "", 3)) %>% 
+  group_by(programming_lang) %>%
+  filter(programming_lang != "Text") %>%
+  summarize(prop = n() / 1433) %>%
+  top_n(5, w = prop) %>%
+  mutate(programming_lang = fct_rev(fct_reorder(programming_lang, prop))) %>%
+  mutate(programming_lang = fct_recode(programming_lang, 
+                                       "Javascript" = "Javascript/Typescript"))
+
+finance_program_plot <- ggplot(programming_finance, aes(x = programming_lang, 
+                         y = prop, fill = programming_lang)) + 
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = round(prop, 2), family = "HersheySans", 
+                vjust = -0.5)) +
+  scale_fill_manual(values=c("#f98cad", "#dba157", "#90b844", "#00c0d1", 
+                             "#e98be0")) + 
+  ylim(c(0, 0.78)) + 
+  labs(title = "Accounting/Finance", 
+       x = "Programming Language", y = "Prop. of Responses") +
+  my_theme
+
+# Online Services
+programming_online <- multiple_choice_data %>%
+  filter(`In what industry is your current employer/contract (or your most recent employer if retired)? - Selected Choice` == 
+           "Online Service/Internet-based Services") %>%
+  select(contains("What programming languages do you use on a regular basis? (Select all that apply")) %>%
+  gather(programming_lang, language) %>%
+  filter(!is.na(language)) %>%
+  filter(language != "Other" & language != "None") %>%
+  mutate(programming_lang = strsplit(programming_lang, "- ") %>% 
+           vapply("[", "", 3)) %>% 
+  group_by(programming_lang) %>%
+  filter(programming_lang != "Text") %>%
+  summarize(prop = n() / 871) %>%
+  top_n(5, w = prop) %>%
+  mutate(programming_lang = fct_rev(fct_reorder(programming_lang, prop))) %>%
+    mutate(programming_lang = fct_recode(programming_lang, 
+                                       "Javascript" = "Javascript/Typescript"))
+
+online_program_plot <- ggplot(programming_online, aes(x = programming_lang, 
+                         y = prop, fill = programming_lang)) + 
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = round(prop, 2), family = "HersheySans", 
+                vjust = -0.5)) +
+  scale_fill_manual(values=c("#f98cad", "#dba157", "#90b844", 
+                             "#91a8f2", "#e98be0")) + 
+  ylim(c(0, 0.82)) + 
+  labs(title = "Online Services", 
+       x = "Programming Language", y = "Prop. of Responses") +
+  my_theme
+
+grid.arrange(tech_program_plot, academia_program_plot, finance_program_plot, 
+             online_program_plot, nrow = 2)
+```
+
+
+# Tools and Libraries
+
+###  Data Analysis Tools
+
+Next, we move onto discussing the different tools used to analyze data. When asked for the primary tool that one uses at work or school to analyze data, the two most common were local or hosted development environments, such as RStudio, and JupyterLab, and basic statistical software such as Microsoft Excel and Google Sheets.
+
+```{r}
+multiple_choice_data %>%
+  select("analysis_tools" = "What is the primary tool that you use at work or school to analyze data? (include text response) - Selected Choice") %>%
+  group_by(analysis_tools) %>%
+  filter(!is.na(analysis_tools)) %>%
+  summarize(count = n()) %>%
+  mutate(analysis_tools = fct_rev(fct_reorder(analysis_tools, count)))%>%
+  mutate(analysis_tools = fct_recode(analysis_tools, 
+        "Advanced  Stat" = "Advanced statistical software (SPSS, SAS, etc.)",
+        "Basic Stat" = "Basic statistical software (Microsoft Excel, Google Sheets, etc.)", 
+        "Business Intelligence" = "Business intelligence software (Salesforce, Tableau, Spotfire, etc.)", 
+        "Cloud-based" = "Cloud-based data software & APIs (AWS, GCP, Azure, etc.)", 
+        "Local Environment" = "Local or hosted development environments (RStudio, JupyterLab, etc.)", 
+        "Other" = "Other")) %>%
+  ggplot(aes(x = analysis_tools, y = count, fill = analysis_tools)) + 
+    geom_bar(stat = "identity") + 
+    scale_fill_discrete_qualitative(palette = "Set2") + 
+    geom_text(aes(label = count), family = "HersheySans", vjust = -0.5, size=3) +
+    labs(title = "Primary Tool Types to Analyze Data", x = "Analysis Tool Type",
+         y = "Number of Responses") + 
+    my_theme
+```
+
+In terms of big data and analytics products, the five most common products were Google Big Query, AWS Redshift, Databricks, AWS Elastic Map Reduce, and Teradata. 
+
+```{r}
+multiple_choice_data %>%
+  select(contains("Which of the following big data and analytics products have you used at work or school in the last 5 years? (Select all that apply) - Selected Choice")) %>%
+  gather(products, product) %>%
+  filter(!is.na(product)) %>%
+  filter(product != "Other" & product != "None") %>%
+  mutate(products = strsplit(products, "- ") %>% 
+           vapply("[", "", 3)) %>% 
+  group_by(products) %>%
+  summarize(count = n()) %>%
+  top_n(5, w = count) %>%
+  mutate(products = fct_rev(fct_reorder(products, count))) %>%
+  ggplot(aes(x = products, y = count, fill = products)) + 
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = count), family = "HersheySans", 
+            vjust = -0.5) +
+  scale_fill_discrete_qualitative(palette = "Set2") +   
+  labs(title = "Top 5 Big Data & Analytics Products", 
+       x = "Product", y = "Number of Responses") + 
+  my_theme
+```
+
+
+###  Machine Learning Libraries
+
+**Note:** Machine learning libraries are sometimes tied to a specific programming language. For example, scikit-learn is a machine learning framework for Python. Thus, there is a correlation between what programming languages a survey respondent uses and what machine learning frameworks they use, and one might argue that these libraries might cause individuals to favor certain programming languages over others. 
+
+For one of the questions, survey respondents were asked "What machine learning frameworks have you used in the past 5 years?" They were allowed to select as many framework as they wanted to. The bar chart shown below (left) shows the top 7 frameworks selected by these individuals. The results above show that by far, Scikit-learn is the most commonly used library that is used by 65.5% of respondents. Other languages that one might want to learn are TensorFlow and Keras (both can be used by multiple programming languges), which were checked off by 53.4% and 43.5% of respondents, respectivley. 
+
+Survey respondents were also asked what specific ML framework they use the most often. For this one, they could only choose 1 answer. As with the previous question, Scikit-learn was by far the most common answer, with 46.51% of the votes. The next two languages are Tensorflow (15%) and Keras (13.3%).
+
+```{r, fig.width = 10}
+ml_regular <- multiple_choice_data %>%
+  select(contains("What machine learning frameworks have you used in the past 5 years? (Select")) %>%
+  gather(ml_library, library) %>%
+  filter(!is.na(library)) %>%
+  filter(library != "Other" & library != "None") %>%
+  mutate(ml_library = strsplit(ml_library, "- ") %>% 
+           vapply("[", "", 3)) %>% 
+  group_by(ml_library) %>%
+  filter(ml_library != "Text") %>%
+  summarize(regular_prop = n() / 18697) %>%
+  top_n(7, w = regular_prop) %>%
+  mutate(ml_library = fct_rev(fct_reorder(ml_library, regular_prop)), 
+         ml_library = fct_recode(ml_library, "scikit" = "Scikit-Learn"))
+  
+
+ml_most <- multiple_choice_data %>%
+  select("ml_library" = 
+           "Of the choices that you selected in the previous question, which ML library have you used the most? - Selected Choice") %>%
+  group_by(ml_library) %>%
+  filter(!is.na(ml_library)) %>%
+  summarize(most_often_prop = n() / 12990) %>%
+  mutate( ml_library = fct_recode(ml_library, "scikit" = "Scikit-Learn"))
+
+ml <- ml_regular %>% left_join(ml_most, by = "ml_library")
+ml <- gather(ml, type, proportion, regular_prop:most_often_prop)
+ml <- ml %>% mutate(type = factor(type, 
+                              levels = c("regular_prop", "most_often_prop"), 
+                              labels = c("Use Regularly", 
+                                         "Use the Most Often")), 
+                    ml_library = fct_relevel(ml_library, 
+                                  "scikit", "TensorFlow", "Keras", 
+                                  "randomForest", "Xgboost", "PyTorch", 
+                                  "Caret"))
+
+ggplot(ml, aes(x = ml_library, y = proportion, fill = ml_library)) + 
+  geom_bar(stat='identity', position = "dodge") + 
+  scale_fill_discrete_qualitative(palette = "Set2") + 
+  scale_y_continuous(labels=scales::percent_format(accuracy = 1)) +
+  geom_text(aes(label = round(100*proportion, 1)),
+            family = "HersheySans", vjust = -0.5) +
+  facet_wrap(type~., scales = "free") +
+  labs(title = "Top 7 Most Popular ML Libraries", x = "ML Library", 
+       y = "% of Respondents") + 
+  my_theme
+```
+
+
+###  Data Visualization Libraries
+
+**Note:** Data visualization libraries are sometimes tied to a specific programming language. For example, ggplot2 is a data visualization platform specific to R. Thus, there is a correlation between what programming languages a survey respondent uses and what data visualization frameworks they prefer, and one might argue that these libraries might cause individuals to favor certain programming languages over others. 
+
+When asked "What data visualization libraries or tools have you used in the past 5 years?," 72% of respondents said that they used Matplotlib, as data visualization library for Python. This was followed by Seaborn (Python), ggplot2 (R), Plotly (Python/R), Shiny (R), D3 (Javascript, can be used w/ other languages), and Bokeh (Python/R). 
+
+We see a similar distribution for the survey results of the question: Of the choices that you selected in the previous question, which specific data visualization library or tool have you used the most? However, one extremely notable difference is that for this result, a higher proportion of people chose ggplot2 than seaborn. This may be because those who are most fluent in Python prefer Matplotlib over Seaborn (both libraries are in Python), and ggplot2 is both extremely intuitive and commonly taught. 
+
+```{r, fig.width = 10}
+ds_regular <- multiple_choice_data %>%
+  select(contains("What data visualization libraries or tools have you used in the past 5 years?")) %>%
+  gather(data_vis, library) %>%
+  filter(!is.na(library)) %>%
+  filter(library != "Other" & library != "None") %>%
+  mutate(data_vis = strsplit(data_vis, "- ") %>% 
+           vapply("[", "", 3)) %>% 
+  group_by(data_vis) %>%
+  filter(data_vis != "Text") %>%
+  summarize(regular_prop = n() / 18593) %>%
+  top_n(7, w = regular_prop) %>%
+  mutate(data_vis = fct_rev(fct_reorder(data_vis, regular_prop)))
+  
+
+ds_most <- multiple_choice_data %>%
+  select("data_vis" = 
+           "Of the choices that you selected in the previous question, which specific data visualization library or tool have you used the most? - Selected Choice") %>%
+  group_by(data_vis) %>%
+  filter(!is.na(data_vis)) %>%
+  summarize(most_often_prop = n() / 12185)
+
+ds <- ds_regular %>% left_join(ds_most, by = "data_vis")
+ds <- gather(ds, type, proportion, regular_prop:most_often_prop)
+ds <- ds %>% mutate(type = factor(type, 
+                              levels = c("regular_prop", "most_often_prop"), 
+                              labels = c("Use Regularly", 
+                                         "Use the Most Often")), 
+                    data_vis = fct_relevel(data_vis, "Matplotlib", "Seaborn", "ggplot2", 
+                                           "Plotly", "Shiny", "D3", "Bokeh"))
+
+ggplot(ds, aes(x = data_vis, y = proportion, fill = data_vis)) + 
+  geom_bar(stat='identity', position = "dodge") + 
+  scale_fill_discrete_qualitative(palette = "Set2") + 
+  scale_y_continuous(labels=scales::percent_format(accuracy = 1)) +
+  geom_text(aes(label = round(100*proportion, 1)),
+            family = "HersheySans", vjust = -0.5) +
+  facet_wrap(type~., scales = "free") +
+  labs(title = "Top 7 Most Popular Data Visualization Libraries", 
+       x = "Data Visualization Library", y = "% of Respondents") + 
+  my_theme
+```
+
+# Learning about Data Science
+
+### Job Responsibilities
+
+Survey respondents were asked which activities (if any) make up an important part of your role at work. Individuals were allowed to select all that apply, or select "None" if none of the activities are an important part of the role at work. It was surprising that under half of the respondents found that analyzing and understanding data was an important part of one's role at work. However, of all the activities listed, this was the activity with the most responses. It is usually a good idea to understand the data one is using before prototyping with or drawing insights from them. 
+```{r}
+multiple_choice_data %>%
+  select(contains("Select any activities that make up an important part of your role at work: (Select all that apply) - Selected Choice")) %>%
+  gather(step, vote) %>%
+  filter(!is.na(vote)) %>%
+  mutate(step = strsplit(step, "- ") %>% 
+           vapply("[", "", 3)) %>% 
+  group_by(step) %>%
+  summarize(prop = n() / 19518) %>%
+  mutate(step = fct_reorder(step, prop), 
+         step = fct_recode(step, 
+        "Build/run data infrastructure" = "Build and/or run the data infrastructure that my business uses for storing, analyzing, and operationalizing data", 
+        "Build prototypes" = "Build prototypes to explore applying machine learning to new areas", 
+        "Build/run ML services" = "Build and/or run a machine learning service that operationally improves my product or workflows", 
+        "Analyze and understand data" = "Analyze and understand data to influence product or business decisions", 
+        "None" = "None of these activities are an important part of my role at work", 
+        "Research ML Advances" = "Do research that advances the state of the art of machine learning")) %>%
+  filter(step != "Other") %>%
+  ggplot(aes(x = step, y = prop, fill = step)) + 
+  geom_bar(stat = 'identity') +
+  scale_fill_discrete_qualitative(palette = "Set2") + 
+  geom_text(aes(label = round(prop, 2)), family = "HersheySans", hjust= -0.15, size=3) +  
+  coord_flip(ylim = c(0, 0.52)) +
+  labs(title = "Activities that are Important to Role at Work", 
+       x = "Activity", y = "Proportion of Responses") +
+  my_theme
+```
+
+
+Many people have the assumption that data science projects are mostly building models; however, this is not true. The bar chart below shows the average percent of time one spends doing specific tasks while completing a data science project. While we see that more than 20% of the time is spent building models, it isn't the overwhelming majority. Before one can build models, they first need to gather the data, clean it, and do some exploratory data analysis to better understand the data. Even after building the models, one must develop insights from the results of the model and communicate these to stakeholders who may not have data science expertise. In addition to all of these tasks, one might do other things, such as doing research on the specific domain or topic.
+```{r}
+ multiple_choice_data %>%
+  select(contains("During a typical data science project at work or school, approximately what proportion of your time is devoted to the following? (Answers must add up to 100%)")) %>%
+  gather(step, vote) %>%
+  filter(!is.na(vote)) %>%
+  mutate(step = strsplit(step, "- ") %>% 
+           vapply("[", "", 2)) %>% 
+  mutate(step = fct_recode(step, "Putting model in production" = "Putting the model into production", 
+                           "Finding/communicating insights" = 
+                             "Finding insights in the data and communicating with stakeholders"), 
+         step = fct_relevel(step, "Other","Putting model in production","Finding/communicating insights", 
+                            "Model building/model selection", "Visualizing data","Cleaning data", "Gathering data")) %>%
+  group_by(step) %>%
+  summarize(prop = round(mean(vote), 2)) %>%
+  ggplot(aes(x = step, y = prop, fill = step)) + 
+  geom_text(aes(label = prop), family = "HersheySans", hjust= -0.15, size=3) +
+  geom_bar(stat = 'identity') +
+  scale_fill_discrete_sequential(palette = "ag_Sunset") + 
+  coord_flip(ylim = c(0, 25)) +
+  labs(title = "Avg. Prop. of Time Spent When Working on a Project", 
+       x = "Task", y = "Proportion of Time") + 
+  my_theme
+```
+
+The graph below shows the distribution of what percent of the time at work in different job positions are spent actively coding. We see that contrary to popular belief, there are some individuals in "coding-heavy" positons such as software engineer and data sciencist that spend less than 50% of their time actively coding. We also see that the distribution for students is shifted more to the left than the other positons. This makes sense, because students still have to take general education courses, do projects, or write papers. 
+```{r, fig.height = 7}
+coding_time <-  multiple_choice_data %>%
+  select("job_title" = "Select the title most similar to your current role (or most recent title if retired): - Selected Choice", "percent"="Approximately what percent of your time at work or school is spent actively coding?") %>%
+  drop_na() %>%
+  # Top four jobs
+  filter(job_title %in% c("Student", "Data Scientist", "Software Engineer", "Data Analyst")) %>%
+  mutate(percent = fct_recode(percent, "0%" = "0% of my time", 
+                               "1-25%" = "1% to 25% of my time", 
+                               "25-49%" = "25% to 49% of my time", 
+                               "50-74%" = "50% to 74% of my time", 
+                               "75-99%" = "75% to 99% of my time", 
+                               "100%" = "100% of my time"), 
+         percent = fct_relevel(percent, "100%", after = Inf)) %>%
+  group_by(job_title, percent) %>%
+  summarize(total = n())
+
+coding_time_all <- multiple_choice_data %>%
+  select("percent"="Approximately what percent of your time at work or school is spent actively coding?") %>%
+  drop_na() %>%
+  mutate(job_title = "All", 
+         percent = fct_recode(percent, "0%" = "0% of my time", 
+                               "1-25%" = "1% to 25% of my time", 
+                               "25-49%" = "25% to 49% of my time", 
+                               "50-74%" = "50% to 74% of my time", 
+                               "75-99%" = "75% to 99% of my time", 
+                               "100%" = "100% of my time"), 
+         percent = fct_relevel(percent, "100%", after = Inf)) %>%
+  group_by(job_title, percent) %>%
+  summarize(total = n()) 
+
+coding_time <- rbind(coding_time, coding_time_all)
+
+ggplot(coding_time, aes(x = percent, y = total, fill = job_title)) + 
+  geom_bar(stat="identity") + 
+  facet_grid(job_title~., scales = 'free') + 
+  scale_fill_discrete_qualitative(palette = "Set2") + 
+  labs(title = "Percent of Time Spent Coding by Job", x = "", y = "Number of Votes") +
+  my_theme
+```
+
+
+### Learning Data Science
+
+How did these data science professionals get to the point that they are at today? The plot below shows the distribution of average percent of one's training by category. Surprisingly, we see that over half of the average training falls under the two categories self-taught (29%) and online courses (24.89%). This hits on a key point about data science: since data science is still a relatively new field, one must have the desire to constantly learn. In addition, university coursework, especially on statistics and programming, account for an average of 18.07% of an individual's training, and is followed by training or hands-on experience at work (16.9%).
+
+```{r}
+multiple_choice_data %>%
+  select(contains("What percentage of your current machine learning/data science training falls under each category?")) %>%
+  gather(step, vote) %>%
+  filter(!is.na(vote)) %>%
+  mutate(step = strsplit(step, "- ") %>% 
+           vapply("[", "", 2)) %>%
+  group_by(step) %>%
+  filter(step != "Other") %>%
+  summarize(percent = round(mean(vote), 2)) %>%
+  mutate(step = fct_recode(step, "Online Courses" = "Online courses (Coursera, Udemy, edX, etc.)"), 
+         step = fct_rev(fct_reorder(step, percent))) %>%
+  ggplot(aes(x = step, y = percent, fill = step)) + 
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = percent), family = "HersheySans", vjust = -0.5) +
+  scale_fill_discrete_qualitative(palette = "Set2") +   
+  labs(title = "Average Percent of Training by Category", x = "Training Category",
+       y = "Average Percent") +
+  my_theme
+```
+
+Another way one can learn about data science is by reading media sources that report on data science. The below chart shows the 7 most popular sources that report on data science. We see that Kaggle is on the top, with 5563 votes; however, this data may be biased because it came from a survey administered by Kaggle. Other common sources are Medium blog posts (such as towardsdatascience).
+```{r}
+multiple_choice_data %>%
+  select(contains("Who/what are your favorite media sources that report on data science topics? (Select all that apply)")) %>%
+  gather(step, vote) %>%
+  filter(!is.na(vote)) %>%
+  mutate(step = strsplit(step, "- ") %>% 
+           vapply("[", "", 3)) %>%
+  group_by(step) %>%
+  summarize(count = n()) %>%
+  filter(step != "Text", step != "None/I do not know") %>%
+  top_n(7, count) %>%
+  mutate(step = fct_reorder(step, count)) %>%
+  ggplot(aes(x = step, y = count, fill = step)) + 
+  geom_bar(stat = 'identity') +
+  geom_text(aes(label = count), family = "HersheySans", hjust= -0.15, size=3) +
+  scale_fill_discrete_qualitative(palette = "Set2") + 
+  coord_flip(ylim = c(0, 5750)) +
+  labs(title = "Favorite Media Sources for Data Science", y = "Number of Votes", 
+       x = "Media Source") +
+  my_theme 
+```
+
+Finally, how does one showcase their expertise in data science? Survey respondents were asked whether academic achievements or independent projects better demonstrate expertise in data science. The responses are summarized in the bar chart below. We see that the most common response is that independent projects are equally as important as academic achievements; however, the next two most common responses show that more individuals think independent projects demonstrates expertise in data sciences better than academic achievements. Thus, to learn data science, one should play with data on their own and add independent projects to their resume! 
+
+```{r}
+multiple_choice_data %>%
+  select(contains("Which better demonstrates expertise in data science: academic achievements or independent projects? - Your views:")) %>%
+  gather(step, vote) %>%
+  mutate(vote = fct_recode(vote, 
+          "Agree" = "Independent projects are much more important than academic achievements", 
+          "Slightly Agree" = "Independent projects are slightly more important than academic achievements",
+          "Both Important" = "Independent projects are equally important as academic achievements",
+          "Both Important" = "No opinion; I do not know",
+          "Slightly Disagree" = "Independent projects are slightly less important than academic achievements",
+          "Disagree" = "Independent projects are much less important than academic achievements"), 
+         vote = fct_relevel(vote, "Agree", "Slightly Agree", "Both Important", 
+                            "Slightly Disagree", "Disagree")) %>%
+  group_by(vote) %>%
+  summarize(count = n()) %>%
+  drop_na() %>%
+  ggplot(aes(x = vote, y = count, fill = vote)) + 
+  geom_bar(stat = 'identity') + 
+  scale_fill_manual(values=c("#04d3c3", "#b2e7df", "#c4c4c4", "#fcd1e8",
+                             "#e092c2")) + 
+  geom_text(aes(label = count), family = "HersheySans", vjust = -0.5) +
+  labs(title = "Independent projects are more important than academic achievements",
+       x = "Response", y = "Number of People") +
+  my_theme
+```
+
+### Online Course Platforms
+
+From above, we learned that on average, approximately 25% of an individual's training for data science or machine learning comes from online courses. But what are the best online courses? 
+
+The two graphs below show the top 7 online course platforms. The graph on the left consist of responses where individuals could select all of the online learning platforms they have used, while for the graph on the right they had to choose the online learning platform they spent the most time on. We see that Coursera is the most popular platform, followed by Udemy and DataCamp. While Coursera and Udemy are certificate-based (you pay for the each certficate), DataCamp is subscription-based (you pay an monthly/annual subscription to have access to courses), which may be while there is a higher proportion of people that spend the most time with DataCamp over Udemy.
+
+```{r, fig.width = 10}
+oc_regular <- multiple_choice_data %>%
+  select(contains("On which online platforms have you begun or completed data science courses? (Select all that apply)")) %>%
+  gather(platform_q, platform) %>%
+  filter(!is.na(platform)) %>%
+  filter(platform != "Other" & platform != "None") %>%
+  mutate(platform_q = strsplit(platform_q, "- ") %>% 
+           vapply("[", "", 3)) %>% 
+  group_by(platform_q) %>%
+  filter(platform_q != "Text") %>%
+  summarize(regular_prop = n() / 15672) %>%
+  top_n(6, w = regular_prop) %>%
+  mutate(platform_q = fct_rev(fct_reorder(platform_q, regular_prop)))
+  
+
+oc_most <- multiple_choice_data %>%
+  select("platform_q" = 
+           "On which online platform have you spent the most amount of time? - Selected Choice") %>%
+  group_by(platform_q) %>%
+  filter(!is.na(platform_q)) %>%
+  summarize(most_often_prop = n() / 9671)
+
+oc <- oc_regular %>% left_join(oc_most, by = "platform_q")
+oc <- gather(oc, type, proportion, regular_prop:most_often_prop)
+oc <- oc %>% mutate(type = factor(type, 
+                              levels = c("regular_prop", "most_often_prop"), 
+                              labels = c("Use Regularly", 
+                                         "Use the Most Often")), 
+                    platform_q = fct_relevel(platform_q, "Coursera", "Udemy", "DataCamp", "Kaggle Learn", 
+                                             "Udacity", "edX"))
+
+ggplot(oc, aes(x = platform_q, y = proportion, fill = platform_q)) + 
+  geom_bar(stat='identity', position = "dodge") + 
+  scale_fill_discrete_qualitative(palette = "Set2") + 
+  scale_y_continuous(labels=scales::percent_format(accuracy = 1)) +
+  geom_text(aes(label = round(100*proportion, 1)),
+            family = "HersheySans", vjust = -0.5) +
+  facet_wrap(type~., scales = "free") +
+  labs(title = "Top 6 Most Popular Online Learning Platforms", 
+       x = "Online Platform", y = "% of Respondents") + 
+  my_theme
+```
