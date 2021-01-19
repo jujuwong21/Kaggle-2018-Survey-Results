@@ -161,7 +161,7 @@ levels(major_data$major) <- c("Computer Science", "Math/Stats", "Engineering",
 ggplot(major_data, aes(x = major, y = count)) + 
   geom_bar(stat="identity") + 
   geom_text(aes(label = count), family = "HersheySans", hjust= -0.15, size=3) +
-  coord_flip(ylim = c(0, 10000)) + 
+#  coord_flip(ylim = c(0, 10000)) + 
   labs(title = "Distribution of Survey Results by Student Major", 
        x = "Major", y = "Number of Surveys") + 
   my_theme
